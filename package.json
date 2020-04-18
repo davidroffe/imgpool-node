@@ -1,0 +1,47 @@
+{
+  "name": "imgpool-server",
+  "version": "0.0.0",
+  "description": "Lightweight image board",
+  "main": "app.js",
+  "scripts": {
+    "init": "node init.js"
+  },
+  "author": "David Roffe <davidroffe@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@koa/multer": "^2.0.0",
+    "@koa/router": "^8.0.0",
+    "bcrypt": "^3.0.6",
+    "bcrypt-nodejs": "^0.0.3",
+    "dotenv": "^8.1.0",
+    "eslint": "5.16.0",
+    "image-size": "^0.7.4",
+    "js-cookie": "^2.2.1",
+    "jsonwebtoken": "^8.5.1",
+    "jwt-simple": "^0.5.6",
+    "koa": "^2.7.0",
+    "koa-logger": "^3.2.0",
+    "koa-send": "^5.0.0",
+    "multer": "^1.4.2",
+    "nodemailer": "^6.3.0",
+    "pg": "^7.12.0",
+    "pg-hstore": "^2.3.3",
+    "pm2": "^4.1.2",
+    "react": "^16.8.6",
+    "react-dom": "^16.8.6",
+    "react-redux": "^7.1.1",
+    "react-router-dom": "^5.0.1",
+    "react-select": "^3.0.5",
+    "react-toastify": "^5.4.0",
+    "redux": "^4.0.4",
+    "sequelize": "^5.12.3",
+    "sharp": "^0.23.0"
+  },
+  "devDependencies": {
+    "sequelize-cli": "^5.5.0"
+  },
+  "resolutions": {
+    "**/**/minimist": "^1.2.3",
+    "**/**/acorn": "^6.4.1"
+  }
+}

@@ -5,16 +5,17 @@ const jwt = require('jsonwebtoken');
 const jwtSecret = process.env.JWT_SECRET;
 const sessionExp = process.env.SESSION_EXP;
 const recaptchaSecret = process.env.RECAPTCHA_SECRET;
+const env = process.env.NODE_ENV;
 require('dotenv').config();
 
 module.exports = (Models, router) => {
-  router.post('/user/signup', async ctx => {
+  router.post('/user/signup', async (ctx) => {
     const {
       email,
       username,
       password,
       passwordConfirm,
-      recaptchaResponse
+      recaptchaResponse,
     } = ctx.query;
     const recaptchaUrl = 'https://www.google.com/recaptcha/api/siteverify';
     const emailRegEx = /[\w.]+@[\w.]+/;
@@ -29,31 +30,32 @@ module.exports = (Models, router) => {
     if (password !== passwordConfirm) {
       errorMessage.push('Please enter a matching password confirmation.');
     }
-    if (!recaptchaResponse) {
+    if (env === 'production' && !recaptchaResponse) {
       errorMessage.push('Invalid reCAPTCHA token.');
     }
     if (errorMessage.length > 0) {
       ctx.throw(401, errorMessage.join('\n'));
     } else {
-      const response = await axios({
-        url: recaptchaUrl,
-        method: 'post',
-        params: {
-          secret: recaptchaSecret,
-          response: recaptchaResponse
-        }
-      });
-      console.log(response.data);
-
-      if (response.data.success) {
+      if (env === 'production') {
+        const response = await axios({
+          url: recaptchaUrl,
+          method: 'post',
+          params: {
+            secret: recaptchaSecret,
+            response: recaptchaResponse,
+          },
+        });
+        console.log(response.data);
+      }
+      if (env === 'development' || response.data.success) {
         const user = await Models.User.findOrCreate({
           where: { email: email },
           defaults: {
             username: username,
             admin: false,
             active: true,
-            password: bcrypt.hashSync(password, bcrypt.genSaltSync(8), null)
-          }
+            password: bcrypt.hashSync(password, bcrypt.genSaltSync(8), null),
+          },
         });
         if (!user[1]) {
           ctx.throw(401, 'Sorry, that email is taken.');
@@ -67,9 +69,13 @@ module.exports = (Models, router) => {
           ctx.cookies.set('auth', sessionToken, { httpOnly: true });
           ctx.status = 200;
           ctx.body = {
-            username: user[0].username,
-            email: user[0].email,
-            admin: user[0].admin
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            bio: user.bio,
+            admin: user.admin,
+            favorites: user.favoritedPosts,
+            valid: true,
           };
         }
       } else {
@@ -77,7 +83,7 @@ module.exports = (Models, router) => {
       }
     }
   });
-  router.post('/user/login', async ctx => {
+  router.post('/user/login', async (ctx) => {
     const { email, password } = ctx.query;
     const emailRegEx = /[\w.]+@[\w.]+/;
 
@@ -95,22 +101,26 @@ module.exports = (Models, router) => {
         ctx.cookies.set('auth', sessionToken, { httpOnly: true });
         ctx.status = 200;
         ctx.body = {
+          id: user.id,
           username: user.username,
           email: user.email,
-          admin: user.admin
+          bio: user.bio,
+          admin: user.admin,
+          favorites: user.favoritedPosts,
+          valid: true,
         };
       } else {
         ctx.throw(401, 'Invalid email or password');
       }
     }
   });
-  router.post('/user/logout', async ctx => {
+  router.post('/user/logout', async (ctx) => {
     const sessionToken = ctx.cookies.get('auth');
     const payload = sessionToken ? jwt.verify(sessionToken, jwtSecret) : false;
 
     if (payload) {
       const user = await Models.User.findOne({
-        where: { id: payload.id }
+        where: { id: payload.id },
       });
       if (user) {
         ctx.cookies.set('auth');
@@ -118,14 +128,14 @@ module.exports = (Models, router) => {
     }
     ctx.status = 200;
   });
-  router.post('/user/edit', async ctx => {
+  router.post('/user/edit', async (ctx) => {
     const {
       editField,
       email,
       username,
       bio,
       password,
-      passwordConfirm
+      passwordConfirm,
     } = ctx.query;
     const sessionToken = ctx.cookies.get('auth');
     const payload = sessionToken ? jwt.verify(sessionToken, jwtSecret) : false;
@@ -141,7 +151,7 @@ module.exports = (Models, router) => {
             ctx.throw(401, 'Invalid email');
           } else {
             const userWithEmail = await Models.User.findOne({
-              where: { email }
+              where: { email },
             });
             if (userWithEmail) {
               ctx.throw(401, 'Sorry, that email is taken.');
@@ -182,14 +192,14 @@ module.exports = (Models, router) => {
           status: 'success',
           username: user.username,
           email: user.email,
-          bio: user.bio
+          bio: user.bio,
         };
       }
     } else {
       ctx.throw(401, 'Invalid session');
     }
   });
-  router.post('/user/edit/:id', async ctx => {
+  router.post('/user/edit/:id', async (ctx) => {
     const { editField, email, username, bio } = ctx.query;
     const userId = ctx.params.id;
     const sessionToken = ctx.cookies.get('auth');
@@ -206,7 +216,7 @@ module.exports = (Models, router) => {
             ctx.throw(401, 'Invalid email');
           } else {
             const userWithEmail = await Models.User.findOne({
-              where: { email }
+              where: { email },
             });
             if (userWithEmail) {
               ctx.throw(401, 'Sorry, that email is taken.');
@@ -233,14 +243,14 @@ module.exports = (Models, router) => {
           status: 'success',
           username: user.username,
           email: user.email,
-          bio: user.bio
+          bio: user.bio,
         };
       }
     } else {
       ctx.throw(401, 'Unauthorized request.');
     }
   });
-  router.post('/user/delete/self', async ctx => {
+  router.post('/user/delete/self', async (ctx) => {
     const sessionToken = ctx.cookies.get('auth');
     const password = ctx.query.password || '';
     const payload = sessionToken ? jwt.verify(sessionToken, jwtSecret) : false;
@@ -262,7 +272,7 @@ module.exports = (Models, router) => {
       ctx.throw(401, 'Invalid session');
     }
   });
-  router.post(['/user/disable/:id', '/user/enable/:id'], async ctx => {
+  router.post(['/user/disable/:id', '/user/enable/:id'], async (ctx) => {
     const id = ctx.params.id;
     const action = ctx.url.split('/')[3];
     const sessionToken = ctx.cookies.get('auth');
@@ -282,7 +292,7 @@ module.exports = (Models, router) => {
       ctx.throw(401, 'Invalid session.');
     }
   });
-  router.post('/user/get/current', async ctx => {
+  router.post('/user/get/current', async (ctx) => {
     const sessionToken = ctx.cookies.get('auth');
 
     if (sessionToken) {
@@ -294,8 +304,8 @@ module.exports = (Models, router) => {
             include: {
               model: Models.Post,
               as: 'favoritedPosts',
-              required: false
-            }
+              required: false,
+            },
           });
 
           if (user && user.active) {
@@ -306,14 +316,14 @@ module.exports = (Models, router) => {
               bio: user.bio,
               admin: user.admin,
               favorites: user.favoritedPosts,
-              valid: true
+              valid: true,
             };
           } else {
             ctx.body = {
               username: '',
               email: '',
               admin: false,
-              valid: false
+              valid: false,
             };
             ctx.cookies.set('auth');
           }
@@ -323,7 +333,7 @@ module.exports = (Models, router) => {
           username: '',
           email: '',
           admin: false,
-          valid: false
+          valid: false,
         };
         ctx.cookies.set('auth');
       }
@@ -332,18 +342,18 @@ module.exports = (Models, router) => {
         username: '',
         email: '',
         admin: false,
-        valid: false
+        valid: false,
       };
     }
     ctx.status = 200;
   });
-  router.get('/user/get', async ctx => {
+  router.get('/user/get', async (ctx) => {
     const sessionToken = ctx.cookies.get('auth') || '';
     const payload = sessionToken ? jwt.verify(sessionToken, jwtSecret) : false;
 
     if (payload.admin) {
       const users = await Models.User.findAll({
-        attributes: ['id', 'username', 'active']
+        attributes: ['id', 'username', 'active'],
       });
       ctx.body = users;
     } else {
@@ -351,7 +361,7 @@ module.exports = (Models, router) => {
     }
     ctx.status = 200;
   });
-  router.get('/user/get/:id', async ctx => {
+  router.get('/user/get/:id', async (ctx) => {
     const sessionToken = ctx.cookies.get('auth') || '';
     const payload = sessionToken ? jwt.verify(sessionToken, jwtSecret) : false;
     const userId = ctx.params.id;
@@ -364,7 +374,7 @@ module.exports = (Models, router) => {
         'bio',
         'email',
         'active',
-        ['createdAt', 'joinDate']
+        ['createdAt', 'joinDate'],
       ];
     } else {
       attributes = [
@@ -372,7 +382,7 @@ module.exports = (Models, router) => {
         'username',
         'bio',
         'active',
-        ['createdAt', 'joinDate']
+        ['createdAt', 'joinDate'],
       ];
     }
 
@@ -383,18 +393,18 @@ module.exports = (Models, router) => {
         include: [
           {
             model: Models.Post,
-            as: 'post'
+            as: 'post',
           },
           {
             model: Models.Post,
-            as: 'favoritedPosts'
-          }
-        ]
+            as: 'favoritedPosts',
+          },
+        ],
       });
       if (user) {
         ctx.body = {
           ...user.dataValues,
-          valid: true
+          valid: true,
         };
       } else {
         ctx.throw(404, 'User not found.');
@@ -404,7 +414,7 @@ module.exports = (Models, router) => {
     }
     ctx.status = 200;
   });
-  router.post('/user/password-reset/', async ctx => {
+  router.post('/user/password-reset/', async (ctx) => {
     const email = ctx.query.email || '';
     const password = ctx.query.password || '';
     const passwordResetToken = ctx.query.passwordResetToken;
@@ -415,7 +425,7 @@ module.exports = (Models, router) => {
 
         if (payload) {
           const user = await Models.User.findOne({
-            where: { email: payload.email }
+            where: { email: payload.email },
           });
 
           if (
@@ -440,7 +450,7 @@ module.exports = (Models, router) => {
               ctx.status = 200;
               ctx.body = {
                 username: user.username,
-                email: user.email
+                email: user.email,
               };
             }
           } else {
@@ -452,7 +462,7 @@ module.exports = (Models, router) => {
       }
     } else {
       const user = await Models.User.findOne({
-        where: { email }
+        where: { email },
       });
 
       if (user) {
@@ -472,8 +482,8 @@ module.exports = (Models, router) => {
           secure: false,
           auth: {
             user: process.env.EMAIL_USERNAME,
-            pass: process.env.EMAIL_PASSWORD
-          }
+            pass: process.env.EMAIL_PASSWORD,
+          },
         });
 
         transporter.sendMail({
@@ -488,19 +498,19 @@ module.exports = (Models, router) => {
           If you requested a password reset for ${user.username}, click the button below. If you didn't make this request, ignore this email.
           </p>
           <a href="https://imgpool.app/password-reset/${token}" style="display:block; margin-top:50px;border:2px solid #333;padding:15px 14px 20px;box-sizing:border-box;width:326px;height:50px;background:none;text-align:center;text-transform:uppercase;text-decoration:none;color:#333;font-family:sans-serif;font-size:12px;font-weight:600;display:block;cursor:pointer;outline:none;">Reset Password</a>
-          </div>`
+          </div>`,
         });
       }
     }
   });
-  router.post('/user/password-reset/:id', async ctx => {
+  router.post('/user/password-reset/:id', async (ctx) => {
     const id = ctx.params.id;
     const sessionToken = ctx.cookies.get('auth') || '';
     const payload = sessionToken ? jwt.verify(sessionToken, jwtSecret) : false;
 
     if (payload.admin) {
       const user = await Models.User.findOne({
-        where: { id }
+        where: { id },
       });
 
       if (user) {
@@ -520,8 +530,8 @@ module.exports = (Models, router) => {
           secure: false,
           auth: {
             user: process.env.EMAIL_USERNAME,
-            pass: process.env.EMAIL_PASSWORD
-          }
+            pass: process.env.EMAIL_PASSWORD,
+          },
         });
 
         transporter.sendMail({
@@ -536,7 +546,7 @@ module.exports = (Models, router) => {
           If you requested a password reset for ${user.username}, click the button below. If you didn't make this request, ignore this email.
           </p>
           <a href="https://imgpool.app/password-reset/${token}" style="display:block; margin-top:50px;border:2px solid #333;padding:15px 14px 20px;box-sizing:border-box;width:326px;height:50px;background:none;text-align:center;text-transform:uppercase;text-decoration:none;color:#333;font-family:sans-serif;font-size:12px;font-weight:600;display:block;cursor:pointer;outline:none;">Reset Password</a>
-          </div>`
+          </div>`,
         });
       } else {
         ctx.throw(401, 'User not found.');

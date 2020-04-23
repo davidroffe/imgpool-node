@@ -4,7 +4,9 @@
   "description": "Lightweight image board",
   "main": "app.js",
   "scripts": {
-    "init": "node init.js"
+    "init": "node init.js",
+    "dev": "NODE_ENV=development node app.js",
+    "prod": "NODE_ENV=production node app.js"
   },
   "author": "David Roffe <davidroffe@gmail.com>",
   "license": "MIT",

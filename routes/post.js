@@ -5,22 +5,23 @@ const sizeOf = require('image-size');
 const sharp = require('sharp');
 const jwt = require('jsonwebtoken');
 const jwtSecret = process.env.JWT_SECRET;
+const clientUploadsPath = `${process.env.CLIENT}/uploads`;
 
 const storage = multer.diskStorage({
-  destination: function(req, file, cb) {
-    cb(null, rootPath + '/public/uploads');
+  destination: function (req, file, cb) {
+    cb(null, rootPath + clientUploadsPath);
   },
-  filename: function(req, file, cb) {
+  filename: function (req, file, cb) {
     cb(
       null,
       file.fieldname + '-' + Date.now() + '.' + file.mimetype.split('/')[1]
     );
-  }
+  },
 });
 const upload = multer({ storage: storage });
 
 module.exports = (Models, router) => {
-  router.get('/post/list', async ctx => {
+  router.get('/post/list', async (ctx) => {
     const offset = ctx.query.offset;
     const allPosts = await Models.Post.findAll({
       where: { active: true },
@@ -31,32 +32,32 @@ module.exports = (Models, router) => {
         model: Models.Tag,
         as: 'tag',
         required: false,
-        attributes: ['id', 'name']
-      }
+        attributes: ['id', 'name'],
+      },
     });
 
     ctx.body = allPosts;
   });
-  router.get('/post/flag/list', async ctx => {
+  router.get('/post/flag/list', async (ctx) => {
     const allFlags = await Models.Flag.findAll({
       order: [['createdAt', 'DESC']],
       include: [
         {
           model: Models.Post,
           as: 'post',
-          attributes: ['active']
+          attributes: ['active'],
         },
         {
           model: Models.User,
           as: 'user',
-          attributes: ['username']
-        }
-      ]
+          attributes: ['username'],
+        },
+      ],
     });
 
     ctx.body = allFlags;
   });
-  router.get('/post/single', async ctx => {
+  router.get('/post/single', async (ctx) => {
     const postId = ctx.query.id;
     const post = await Models.Post.findOne({
       where: { id: postId },
@@ -65,15 +66,15 @@ module.exports = (Models, router) => {
           model: Models.Tag,
           as: 'tag',
           required: false,
-          attributes: ['id', 'name']
+          attributes: ['id', 'name'],
         },
         {
           model: Models.User,
           as: 'user',
           required: true,
-          attributes: ['id', 'username']
-        }
-      ]
+          attributes: ['id', 'username'],
+        },
+      ],
     });
 
     if (post) {
@@ -83,7 +84,7 @@ module.exports = (Models, router) => {
     }
   });
 
-  router.post('/post/favorite', async ctx => {
+  router.post('/post/favorite', async (ctx) => {
     const sessionToken = ctx.cookies.get('auth');
     const postId = ctx.query.postId;
     const secret = process.env.JWT_SECRET;
@@ -94,8 +95,8 @@ module.exports = (Models, router) => {
         where: { postId, userId: payload.id },
         defaults: {
           postId,
-          userId: payload.id
-        }
+          userId: payload.id,
+        },
       });
       if (!post[1]) {
         await post[0].destroy();
@@ -106,18 +107,18 @@ module.exports = (Models, router) => {
         include: {
           model: Models.Post,
           as: 'favoritedPosts',
-          required: false
-        }
+          required: false,
+        },
       });
       ctx.body = {
-        favorites: user.favoritedPosts
+        favorites: user.favoritedPosts,
       };
     } else {
       ctx.throw(401, 'Invalid session');
     }
   });
 
-  router.post('/post/flag/create', async ctx => {
+  router.post('/post/flag/create', async (ctx) => {
     const sessionToken = ctx.cookies.get('auth');
     const { postId, reason } = ctx.query;
     const secret = process.env.JWT_SECRET;
@@ -127,7 +128,7 @@ module.exports = (Models, router) => {
       const flag = await Models.Flag.create({
         postId,
         userId: payload.id,
-        reason
+        reason,
       });
 
       await flag.save();
@@ -137,7 +138,7 @@ module.exports = (Models, router) => {
     }
   });
 
-  router.post('/post/create', upload.single('image'), async ctx => {
+  router.post('/post/create', upload.single('image'), async (ctx) => {
     const sessionToken = ctx.cookies.get('auth');
     const secret = process.env.JWT_SECRET;
     const payload = jwt.verify(sessionToken, secret);
@@ -148,7 +149,7 @@ module.exports = (Models, router) => {
 
     let errorRes = {
       status: 401,
-      message: []
+      message: [],
     };
 
     if (!ctx.file) {
@@ -168,25 +169,25 @@ module.exports = (Models, router) => {
         width: dimensions.width,
         source: source,
         url: '/uploads/' + ctx.file.filename,
-        thumbUrl: '/uploads/thumbnails/' + ctx.file.filename
+        thumbUrl: '/uploads/thumbnails/' + ctx.file.filename,
       });
 
       for (var i = 0; i < tags.length; i++) {
         const [tag] = await Models.Tag.findOrCreate({
           where: { name: tags[i] },
-          defaults: { active: true }
+          defaults: { active: true },
         });
 
         await Models.TaggedPost.create({
           postId: newPost.id,
           tagId: tag.id,
-          tagName: tag.name
+          tagName: tag.name,
         });
       }
 
       await sharp(ctx.file.path)
         .resize(200, 200, {
-          fit: 'cover'
+          fit: 'cover',
         })
         .toFile(ctx.file.destination + '/thumbnails/' + ctx.file.filename);
 
@@ -196,8 +197,10 @@ module.exports = (Models, router) => {
     }
   });
 
-  router.get('/post/search', async ctx => {
-    const searchQuery = ctx.query.searchQuery.split(' ').map(x => `'${x}'`);
+  router.get('/post/search', async (ctx) => {
+    const searchQuery = ctx.query.searchQuery.split(',').map((x) => `'${x}'`);
+    console.log(searchQuery);
+
     let userId = false;
     let favoritedPostIds = [];
 
@@ -216,11 +219,11 @@ module.exports = (Models, router) => {
           model: Models.Post,
           as: 'favoritedPosts',
           required: false,
-          attributes: ['id']
-        }
+          attributes: ['id'],
+        },
       });
 
-      favoritedPostIds = user.favoritedPosts.map(post => {
+      favoritedPostIds = user.favoritedPosts.map((post) => {
         return post.id;
       });
     }
@@ -238,7 +241,7 @@ module.exports = (Models, router) => {
         'post->tag->TaggedPost.tagId',
         'post->tag->TaggedPost.tagName',
         'post->tag->TaggedPost.createdAt',
-        'post->tag->TaggedPost.updatedAt'
+        'post->tag->TaggedPost.updatedAt',
       ],
       having: Models.sequelize.literal(
         `array_agg("TaggedPost"."tagName") @> array[${searchQuery}]::varchar[]`
@@ -248,15 +251,15 @@ module.exports = (Models, router) => {
         as: 'post',
         include: {
           model: Models.Tag,
-          as: 'tag'
-        }
-      }
+          as: 'tag',
+        },
+      },
     });
 
-    ctx.body = posts.map(x => x.post);
+    ctx.body = posts.map((x) => x.post);
   });
 
-  router.post('/post/delete/:id', async ctx => {
+  router.post('/post/delete/:id', async (ctx) => {
     const id = ctx.params.id;
     const sessionToken = ctx.cookies.get('auth');
     const payload = sessionToken ? jwt.verify(sessionToken, jwtSecret) : false;
@@ -270,9 +273,9 @@ module.exports = (Models, router) => {
     }
     ctx.body = { status: 'success' };
   });
-  router.post('/post/addTag', async ctx => {
+  router.post('/post/addTag', async (ctx) => {
     const allPosts = await Models.Post.findAll({
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'DESC']],
     });
 
     ctx.body = allPosts;

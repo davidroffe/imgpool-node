@@ -190,9 +190,13 @@ module.exports = (Models, router) => {
         ctx.status = 200;
         ctx.body = {
           status: 'success',
+          id: user.id,
           username: user.username,
           email: user.email,
           bio: user.bio,
+          admin: user.admin,
+          favorites: user.favoritedPosts,
+          valid: true,
         };
       }
     } else {
@@ -240,10 +244,13 @@ module.exports = (Models, router) => {
         await user.save();
         ctx.status = 200;
         ctx.body = {
-          status: 'success',
+          id: user.id,
           username: user.username,
           email: user.email,
           bio: user.bio,
+          admin: user.admin,
+          favorites: user.favoritedPosts,
+          valid: true,
         };
       }
     } else {
@@ -449,8 +456,13 @@ module.exports = (Models, router) => {
               ctx.cookies.set('auth', sessionToken, { httpOnly: true });
               ctx.status = 200;
               ctx.body = {
+                id: user.id,
                 username: user.username,
                 email: user.email,
+                bio: user.bio,
+                admin: user.admin,
+                favorites: user.favoritedPosts,
+                valid: true,
               };
             }
           } else {

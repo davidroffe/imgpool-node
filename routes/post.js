@@ -198,23 +198,31 @@ module.exports = (Models, router) => {
   });
 
   router.get('/post/search', async (ctx) => {
-    const searchQuery = ctx.query.searchQuery.split(',').map((x) => `'${x}'`);
-    console.log(searchQuery);
-
-    let userId = false;
+    const searchQuery = ctx.query.searchQuery.split(' ');
+    const favUserIdIndex = searchQuery.findIndex((value) => {
+      return /fp:\d+/.test(value);
+    });
+    const postsByUserIdIndex = searchQuery.findIndex((value) => {
+      return /user:\d+/.test(value);
+    });
+    let favoritedPostsUserId = false;
+    let postsByUserId = false;
     let favoritedPostIds = [];
+    let where = {};
+    let having = {};
 
-    for (let i = 0; i < searchQuery.length; i++) {
-      if (searchQuery[i].indexOf('fp:') > -1) {
-        userId = searchQuery[i].split(':')[1].slice(0, 1);
-        searchQuery.splice(i, 1);
-        break;
-      }
+    if (favUserIdIndex > -1) {
+      favoritedPostsUserId = searchQuery[favUserIdIndex].split(':')[1];
+      searchQuery.splice(favUserIdIndex, 1);
+    }
+    if (postsByUserIdIndex > -1) {
+      postsByUserId = searchQuery[postsByUserIdIndex].split(':')[1];
+      searchQuery.splice(postsByUserIdIndex, 1);
     }
 
-    if (userId) {
+    if (favoritedPostsUserId) {
       const user = await Models.User.findOne({
-        where: { id: userId },
+        where: { id: favoritedPostsUserId },
         include: {
           model: Models.Post,
           as: 'favoritedPosts',
@@ -228,35 +236,46 @@ module.exports = (Models, router) => {
       });
     }
 
-    const posts = await Models.TaggedPost.findAll({
-      where: userId ? { postId: favoritedPostIds } : null,
-      order: [['createdAt', 'DESC']],
+    if (favoritedPostsUserId) {
+      where.postId = favoritedPostIds;
+    }
+
+    if (searchQuery.length > 0) {
+      where.tagName = searchQuery;
+      having = Models.sequelize.literal(
+        `count("postId") = ${searchQuery.length}`
+      );
+    }
+
+    const postIds = await Models.TaggedPost.findAll({
+      where,
       attributes: ['postId'],
-      group: [
-        'TaggedPost.postId',
-        'TaggedPost.createdAt',
-        'post.id',
-        'post->tag.id',
-        'post->tag->TaggedPost.postId',
-        'post->tag->TaggedPost.tagId',
-        'post->tag->TaggedPost.tagName',
-        'post->tag->TaggedPost.createdAt',
-        'post->tag->TaggedPost.updatedAt',
-      ],
-      having: Models.sequelize.literal(
-        `array_agg("TaggedPost"."tagName") @> array[${searchQuery}]::varchar[]`
-      ),
+      group: ['postId'],
+      having,
+    }).map((x) => x.postId);
+
+    where = {
+      active: true,
+      id: postIds,
+    };
+
+    if (postsByUserId) {
+      where.userId = postsByUserId;
+    }
+
+    const posts = await Models.Post.findAll({
+      where,
+      limit: 18,
+      order: [['createdAt', 'DESC']],
       include: {
-        model: Models.Post,
-        as: 'post',
-        include: {
-          model: Models.Tag,
-          as: 'tag',
-        },
+        model: Models.Tag,
+        as: 'tag',
+        required: false,
+        attributes: ['id', 'name'],
       },
     });
 
-    ctx.body = posts.map((x) => x.post);
+    ctx.body = posts;
   });
 
   router.post('/post/delete/:id', async (ctx) => {

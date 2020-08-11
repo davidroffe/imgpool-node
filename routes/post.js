@@ -230,14 +230,14 @@ module.exports = (Models, router) => {
           attributes: ['id'],
         },
       });
-
-      favoritedPostIds = user.favoritedPosts.map((post) => {
-        return post.id;
-      });
-    }
-
-    if (favoritedPostsUserId) {
-      where.postId = favoritedPostIds;
+      if (user) {
+        where.postId = user.favoritedPosts.map((post) => {
+          return post.id;
+        });
+      } else {
+        ctx.body = [];
+        return;
+      }
     }
 
     if (searchQuery.length > 0) {

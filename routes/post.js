@@ -22,7 +22,7 @@ const upload = multer({ storage: storage });
 
 module.exports = (Models, router) => {
   router.get('/post/list', async (ctx) => {
-    const offset = ctx.query.offset;
+    const offset = (ctx.query.page - 1) * 18;
     const allPosts = await Models.Post.findAll({
       where: { active: true },
       offset,

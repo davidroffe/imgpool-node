@@ -21,8 +21,8 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 module.exports = (Models, router) => {
-  router.get('/post/list', async (ctx) => {
-    const offset = ctx.query.offset;
+  router.get('/post/list', async function getPostList(ctx) {
+    const offset = (ctx.query.page - 1) * 18;
     const allPosts = await Models.Post.findAll({
       where: { active: true },
       offset,
@@ -36,7 +36,11 @@ module.exports = (Models, router) => {
       },
     });
 
-    ctx.body = allPosts;
+    const count = await Models.Post.count({
+      where: { active: true },
+    });
+
+    ctx.body = { list: allPosts, totalCount: count };
   });
   router.get('/post/flag/list', async (ctx) => {
     const allFlags = await Models.Flag.findAll({
@@ -211,6 +215,11 @@ module.exports = (Models, router) => {
     let where = {};
     let having = {};
 
+    if (searchQuery.length === 0) {
+      getPostList(ctx);
+      return;
+    }
+
     if (favUserIdIndex > -1) {
       favoritedPostsUserId = searchQuery[favUserIdIndex].split(':')[1];
       searchQuery.splice(favUserIdIndex, 1);
@@ -230,14 +239,14 @@ module.exports = (Models, router) => {
           attributes: ['id'],
         },
       });
-
-      favoritedPostIds = user.favoritedPosts.map((post) => {
-        return post.id;
-      });
-    }
-
-    if (favoritedPostsUserId) {
-      where.postId = favoritedPostIds;
+      if (user) {
+        where.postId = user.favoritedPosts.map((post) => {
+          return post.id;
+        });
+      } else {
+        ctx.body = [];
+        return;
+      }
     }
 
     if (searchQuery.length > 0) {
@@ -275,7 +284,9 @@ module.exports = (Models, router) => {
       },
     });
 
-    ctx.body = posts;
+    const count = await Models.Post.count({ where });
+
+    ctx.body = { list: posts, totalCount: count };
   });
 
   router.post('/post/delete/:id', async (ctx) => {

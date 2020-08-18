@@ -36,7 +36,11 @@ module.exports = (Models, router) => {
       },
     });
 
-    ctx.body = allPosts;
+    const count = await Models.Post.count({
+      where: { active: true },
+    });
+
+    ctx.body = { list: allPosts, totalCount: count };
   });
   router.get('/post/flag/list', async (ctx) => {
     const allFlags = await Models.Flag.findAll({

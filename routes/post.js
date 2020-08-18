@@ -21,7 +21,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 module.exports = (Models, router) => {
-  router.get('/post/list', async (ctx) => {
+  router.get('/post/list', async function getPostList(ctx) {
     const offset = (ctx.query.page - 1) * 18;
     const allPosts = await Models.Post.findAll({
       where: { active: true },
@@ -215,6 +215,11 @@ module.exports = (Models, router) => {
     let where = {};
     let having = {};
 
+    if (searchQuery.length === 0) {
+      getPostList(ctx);
+      return;
+    }
+
     if (favUserIdIndex > -1) {
       favoritedPostsUserId = searchQuery[favUserIdIndex].split(':')[1];
       searchQuery.splice(favUserIdIndex, 1);
@@ -279,7 +284,9 @@ module.exports = (Models, router) => {
       },
     });
 
-    ctx.body = posts;
+    const count = await Models.Post.count({ where });
+
+    ctx.body = { list: posts, totalCount: count };
   });
 
   router.post('/post/delete/:id', async (ctx) => {

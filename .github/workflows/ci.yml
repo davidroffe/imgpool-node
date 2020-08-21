@@ -1,10 +1,10 @@
 name: CI
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   deploy:
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/prod'
     runs-on: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v1
@@ -16,5 +16,6 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             cd ${{ secrets.PROJECT_PATH }}
+            git checkout prod
             git pull
             pm2 reload app

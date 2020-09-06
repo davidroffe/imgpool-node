@@ -17,16 +17,7 @@ app.use(async (ctx, next) => {
   await next();
   if (ctx.status === 404) {
     ctx.set('Cache-Control', 'public');
-    await send(ctx, '/index.html', { root: clientPath });
-  }
-});
-app.use(async (ctx, next) => {
-  await next();
-  if (ctx.path.split('/')[1] !== 'api') {
-    if (fs.existsSync(clientPath + ctx.path)) {
-      ctx.set('Cache-Control', 'public');
-      await send(ctx, ctx.path, { root: clientPath });
-    }
+    ctx.body = { status: 404 };
   }
 });
 app.use(validate);

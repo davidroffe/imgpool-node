@@ -45,7 +45,6 @@ module.exports = (Models, router) => {
             response: recaptchaResponse,
           },
         });
-        console.log(response.data);
       }
       if (env === 'development' || response.data.success) {
         const user = await Models.User.findOrCreate({
@@ -60,7 +59,12 @@ module.exports = (Models, router) => {
         if (!user[1]) {
           ctx.throw(401, 'Sorry, that email is taken.');
         } else {
-          const payload = { id: user[0].id, admin: user[0].admin };
+          const payload = {
+            id: user[0].id,
+            username: user[0].username,
+            email: user[0].email,
+            admin: user[0].admin,
+          };
           const options = { expiresIn: sessionExp };
           const sessionToken = jwt.sign(payload, jwtSecret, options);
 
@@ -94,7 +98,12 @@ module.exports = (Models, router) => {
       if (!user || !user.active) {
         ctx.throw(401, 'Invalid email or password');
       } else if (bcrypt.compareSync(password, user.password)) {
-        const payload = { id: user.id, admin: user.admin };
+        const payload = {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          admin: user.admin,
+        };
         const options = { expiresIn: sessionExp };
         const sessionToken = jwt.sign(payload, jwtSecret, options);
 
@@ -449,7 +458,12 @@ module.exports = (Models, router) => {
               );
               user.save();
 
-              const payload = { id: user.id, admin: user.admin };
+              const payload = {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                admin: user.admin,
+              };
               const options = { expiresIn: sessionExp };
               const sessionToken = jwt.sign(payload, jwtSecret, options);
 

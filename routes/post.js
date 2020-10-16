@@ -22,11 +22,12 @@ const upload = multer({ storage: storage });
 
 module.exports = (Models, router) => {
   router.get('/post/list', async function getPostList(ctx) {
-    const offset = (ctx.query.page - 1) * 18;
+    const postsPerPage = ctx.query.postsPerPage || 18;
+    const offset = (ctx.query.page - 1) * postsPerPage;
     const allPosts = await Models.Post.findAll({
       where: { active: true },
       offset,
-      limit: 18,
+      limit: postsPerPage,
       order: [['createdAt', 'DESC']],
       include: {
         model: Models.Tag,
@@ -202,6 +203,7 @@ module.exports = (Models, router) => {
   });
 
   router.get('/post/search', async (ctx) => {
+    const postsPerPage = ctx.query.postsPerPage || 18;
     const searchQuery = ctx.query.searchQuery.split(' ');
     const favUserIdIndex = searchQuery.findIndex((value) => {
       return /fp:\d+/.test(value);
@@ -274,7 +276,7 @@ module.exports = (Models, router) => {
 
     const posts = await Models.Post.findAll({
       where,
-      limit: 18,
+      limit: postsPerPage,
       order: [['createdAt', 'DESC']],
       include: {
         model: Models.Tag,

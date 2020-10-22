@@ -253,6 +253,7 @@ module.exports = (Models, router) => {
         await user.save();
         ctx.status = 200;
         ctx.body = {
+          status: 'success',
           id: user.id,
           username: user.username,
           email: user.email,

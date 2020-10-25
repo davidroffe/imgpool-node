@@ -16,8 +16,8 @@ module.exports = (Models, router) => {
   router.post(['/tag/toggle', '/tag/delete'], async (ctx) => {
     const sessionToken = ctx.cookies.get('auth');
     const payload = sessionToken ? jwt.verify(sessionToken, jwtSecret) : false;
-    const tagIds = ctx.query['tagIds'];
-    console.log(ctx.query);
+    const tagIds = ctx.query['tagIds'].split(',');
+
     if (payload && payload.admin) {
       if (ctx.url.indexOf('/api/tag/toggle') > -1) {
         const tags = await Models.Tag.findAll({

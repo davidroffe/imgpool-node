@@ -10,7 +10,6 @@ const app = new Koa();
 const apiRouter = new Router({
   prefix: '/api',
 });
-const clientPath = __dirname + process.env.CLIENT;
 
 app.use(logger());
 app.use(async (ctx, next) => {

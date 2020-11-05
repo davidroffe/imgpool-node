@@ -516,7 +516,7 @@ module.exports = (Models, router) => {
         return new Promise((resolve, reject) => {
           transporter.sendMail(
             {
-              from: '"Imgpool Support" <support@imgpool.app>', // sender address
+              from: `"${process.env.EMAIL_NAME}" <${process.env.EMAIL}>`, // sender address
               to: user.email,
               subject: 'Password Reset', // Subject line
               html: `<div style="width: 825px;max-width: 100%;">
@@ -526,7 +526,7 @@ module.exports = (Models, router) => {
             <p style="margin:10px 0;color:#333;font-weight: 600;font-size: 14px;line-height: 20px;">
             If you requested a password reset for ${user.username}, click the button below. If you didn't make this request, ignore this email.
             </p>
-            <a href="https://imgpool.app/password-reset/${token}" style="display:block; margin-top:50px;border:2px solid #333;padding:15px 14px 20px;box-sizing:border-box;width:326px;height:50px;background:none;text-align:center;text-transform:uppercase;text-decoration:none;color:#333;font-family:sans-serif;font-size:12px;font-weight:600;display:block;cursor:pointer;outline:none;">Reset Password</a>
+            <a href="${process.env.SITE_URL}/password-reset/${token}" style="display:block; margin-top:50px;border:2px solid #333;padding:15px 14px 20px;box-sizing:border-box;width:326px;height:50px;background:none;text-align:center;text-transform:uppercase;text-decoration:none;color:#333;font-family:sans-serif;font-size:12px;font-weight:600;display:block;cursor:pointer;outline:none;">Reset Password</a>
             </div>`,
             },
             (err, info) => {
@@ -578,7 +578,7 @@ module.exports = (Models, router) => {
         return new Promise((resolve, reject) => {
           transporter.sendMail(
             {
-              from: '"Imgpool Support" <support@imgpool.app>', // sender address
+              from: `"${process.env.EMAIL_NAME}" <${process.env.EMAIL}>`, // sender address
               to: user.email,
               subject: 'Password Reset', // Subject line
               html: `<div style="width: 825px;max-width: 100%;">
@@ -588,7 +588,7 @@ module.exports = (Models, router) => {
             <p style="margin:10px 0;color:#333;font-weight: 600;font-size: 14px;line-height: 20px;">
             If you requested a password reset for ${user.username}, click the button below. If you didn't make this request, ignore this email.
             </p>
-            <a href="https://imgpool.app/password-reset/${token}" style="display:block; margin-top:50px;border:2px solid #333;padding:15px 14px 20px;box-sizing:border-box;width:326px;height:50px;background:none;text-align:center;text-transform:uppercase;text-decoration:none;color:#333;font-family:sans-serif;font-size:12px;font-weight:600;display:block;cursor:pointer;outline:none;">Reset Password</a>
+            <a href="${process.env.SITE_URL}/password-reset/${token}" style="display:block; margin-top:50px;border:2px solid #333;padding:15px 14px 20px;box-sizing:border-box;width:326px;height:50px;background:none;text-align:center;text-transform:uppercase;text-decoration:none;color:#333;font-family:sans-serif;font-size:12px;font-weight:600;display:block;cursor:pointer;outline:none;">Reset Password</a>
             </div>`,
             },
             (err) => {

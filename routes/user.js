@@ -74,11 +74,11 @@ module.exports = (Models, router) => {
           ctx.status = 200;
           ctx.body = {
             id: user.id,
-            username: user.username,
-            email: user.email,
-            bio: user.bio,
-            admin: user.admin,
-            favorites: user.favoritedPosts,
+            username: user[0].username,
+            email: user[0].email,
+            bio: user[0].bio,
+            admin: user[0].admin,
+            favorites: user[0].favoritedPosts,
             valid: true,
           };
         }

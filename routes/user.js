@@ -513,19 +513,33 @@ module.exports = (Models, router) => {
           },
         });
 
-        transporter.sendMail({
-          from: '"Imgpool Support" <support@imgpool.app>', // sender address
-          to: user.email,
-          subject: 'Password Reset', // Subject line
-          html: `<div style="width: 825px;max-width: 100%;">
-          <h1 style="margin:0 auto 35px;color:#333;font-size:55px;font-family: sans-serif;font-weight: 600;">
-          <span style="padding-right:15px;border-right:1px solid #333;">Password Reset</span>
-          </h1>
-          <p style="margin:10px 0;color:#333;font-weight: 600;font-size: 14px;line-height: 20px;">
-          If you requested a password reset for ${user.username}, click the button below. If you didn't make this request, ignore this email.
-          </p>
-          <a href="https://imgpool.app/password-reset/${token}" style="display:block; margin-top:50px;border:2px solid #333;padding:15px 14px 20px;box-sizing:border-box;width:326px;height:50px;background:none;text-align:center;text-transform:uppercase;text-decoration:none;color:#333;font-family:sans-serif;font-size:12px;font-weight:600;display:block;cursor:pointer;outline:none;">Reset Password</a>
-          </div>`,
+        return new Promise((resolve, reject) => {
+          transporter.sendMail(
+            {
+              from: '"Imgpool Support" <support@imgpool.app>', // sender address
+              to: user.email,
+              subject: 'Password Reset', // Subject line
+              html: `<div style="width: 825px;max-width: 100%;">
+            <h1 style="margin:0 auto 35px;color:#333;font-size:55px;font-family: sans-serif;font-weight: 600;">
+            <span style="padding-right:15px;border-right:1px solid #333;">Password Reset</span>
+            </h1>
+            <p style="margin:10px 0;color:#333;font-weight: 600;font-size: 14px;line-height: 20px;">
+            If you requested a password reset for ${user.username}, click the button below. If you didn't make this request, ignore this email.
+            </p>
+            <a href="https://imgpool.app/password-reset/${token}" style="display:block; margin-top:50px;border:2px solid #333;padding:15px 14px 20px;box-sizing:border-box;width:326px;height:50px;background:none;text-align:center;text-transform:uppercase;text-decoration:none;color:#333;font-family:sans-serif;font-size:12px;font-weight:600;display:block;cursor:pointer;outline:none;">Reset Password</a>
+            </div>`,
+            },
+            (err, info) => {
+              if (err) {
+                ctx.status = 500;
+                ctx.body = { message: 'Server error.' };
+              } else {
+                ctx.status = 200;
+                ctx.body = { message: 'An email has been sent.' };
+              }
+              resolve();
+            }
+          );
         });
       }
     }

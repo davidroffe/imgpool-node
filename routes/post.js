@@ -185,7 +185,7 @@ module.exports = (Models, router) => {
     }
 
     uploadParams.Body = fileStream;
-    uploadParams.Key = `${s3ImageDir}${files[0].filename}`;
+    uploadParams.Key = s3ImageDir + files[0].filename;
 
     return new Promise((resolve) => {
       s3.upload(uploadParams, async function (err, data) {
@@ -217,7 +217,7 @@ module.exports = (Models, router) => {
             });
           }
 
-          uploadParams.Key = `${s3ThumbDir}${files[0].filename}`;
+          uploadParams.Key = s3ThumbDir + files[0].filename;
           uploadParams.Body = await sharp(files[0].path).resize(200, 200, {
             fit: 'cover',
           });

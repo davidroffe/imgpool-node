@@ -1,24 +1,36 @@
 const path = require('path');
+const fs = require('fs');
 const rootPath = path.dirname(require.main.filename);
-const multer = require('@koa/multer');
+const asyncBusboy = require('async-busboy');
+// const multer = require('@koa/multer');
 const sizeOf = require('image-size');
 const sharp = require('sharp');
 const jwt = require('jsonwebtoken');
 const jwtSecret = process.env.JWT_SECRET;
-const clientUploadsPath = `${process.env.CLIENT}/uploads`;
+const s3Bucket = process.env.S3_BUCKET;
+const s3ImageDir = process.env.S3_IMAGE_DIR;
+const s3ThumbDir = process.env.S3_THUMB_DIR;
+const imageUrl = process.env.IMAGE_URL;
+const thumbUrl = process.env.THUMB_URL;
+// const clientUploadsPath = `${process.env.CLIENT}/uploads`;
+const AWS = require('aws-sdk');
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, rootPath + clientUploadsPath);
-  },
-  filename: function (req, file, cb) {
-    cb(
-      null,
-      file.fieldname + '-' + Date.now() + '.' + file.mimetype.split('/')[1]
-    );
-  },
-});
-const upload = multer({ storage: storage });
+AWS.config.loadFromPath('./aws.json');
+
+const s3 = new AWS.S3();
+
+// const storage = multer.diskStorage({
+//   destination: function (req, file, cb) {
+//     cb(null, rootPath + clientUploadsPath);
+//   },
+//   filename: function (req, file, cb) {
+//     cb(
+//       null,
+//       file.fieldname + '-' + Date.now() + '.' + file.mimetype.split('/')[1]
+//     );
+//   },
+// });
+// const upload = multer({ storage: storage });
 
 module.exports = (Models, router) => {
   router.get('/post/list', async function getPostList(ctx) {
@@ -143,7 +155,7 @@ module.exports = (Models, router) => {
     }
   });
 
-  router.post('/post/create', upload.single('image'), async (ctx) => {
+  router.post('/post/create', async (ctx) => {
     const sessionToken = ctx.cookies.get('auth');
     const secret = process.env.JWT_SECRET;
     const payload = jwt.verify(sessionToken, secret);
@@ -151,13 +163,16 @@ module.exports = (Models, router) => {
       typeof ctx.query.tags !== 'undefined' ? ctx.query.tags.split(' ') : [];
     const source =
       typeof ctx.query.source !== 'undefined' ? ctx.query.source : '';
+    const errorRes = { status: 401, message: [] };
+    const uploadParams = { Bucket: s3Bucket, Key: '', Body: '' };
+    const { files } = await asyncBusboy(ctx.req);
+    const fileStream = fs.createReadStream(files[0].path);
+    const dimensions = sizeOf(files[0].path);
 
-    let errorRes = {
-      status: 401,
-      message: [],
-    };
-
-    if (!ctx.file) {
+    fileStream.on('error', function (err) {
+      errorRes.message.push('File Error');
+    });
+    if (!files[0].filename) {
       errorRes.message.push('Please select a file.');
     }
     if (!tags.length) {
@@ -165,41 +180,61 @@ module.exports = (Models, router) => {
         'Minimum 4 space separated tags. ie: red race_car bmw m3'
       );
     }
-
-    if (!errorRes.message.length) {
-      const dimensions = sizeOf(ctx.file.path);
-      const newPost = await Models.Post.create({
-        userId: payload.id,
-        height: dimensions.height,
-        width: dimensions.width,
-        source: source,
-        url: '/uploads/' + ctx.file.filename,
-        thumbUrl: '/uploads/thumbnails/' + ctx.file.filename,
-      });
-
-      for (var i = 0; i < tags.length; i++) {
-        const [tag] = await Models.Tag.findOrCreate({
-          where: { name: tags[i] },
-          defaults: { active: true },
-        });
-
-        await Models.TaggedPost.create({
-          postId: newPost.id,
-          tagId: tag.id,
-          tagName: tag.name,
-        });
-      }
-
-      await sharp(ctx.file.path)
-        .resize(200, 200, {
-          fit: 'cover',
-        })
-        .toFile(ctx.file.destination + '/thumbnails/' + ctx.file.filename);
-
-      ctx.body = { status: 'success' };
-    } else {
-      ctx.throw(errorRes.status, 'Invalid file or tags');
+    if (errorRes.message.length) {
+      ctx.throw(errorRes.status, errorRes.message.join('\n'));
     }
+
+    uploadParams.Body = fileStream;
+    uploadParams.Key = `${s3ImageDir}${files[0].filename}`;
+
+    return new Promise((resolve) => {
+      s3.upload(uploadParams, async function (err, data) {
+        if (err) {
+          console.log('Error', err);
+        }
+        if (data) {
+          console.log('Upload Success', data.Location);
+
+          const newPost = await Models.Post.create({
+            userId: payload.id,
+            height: dimensions.height,
+            width: dimensions.width,
+            source: source,
+            url: imageUrl + files[0].filename,
+            thumbUrl: thumbUrl + files[0].filename,
+          });
+
+          for (var i = 0; i < tags.length; i++) {
+            const [tag] = await Models.Tag.findOrCreate({
+              where: { name: tags[i] },
+              defaults: { active: true },
+            });
+
+            await Models.TaggedPost.create({
+              postId: newPost.id,
+              tagId: tag.id,
+              tagName: tag.name,
+            });
+          }
+
+          uploadParams.Key = `${s3ThumbDir}${files[0].filename}`;
+          uploadParams.Body = await sharp(files[0].path).resize(200, 200, {
+            fit: 'cover',
+          });
+
+          s3.upload(uploadParams, function (err, data) {
+            if (err) {
+              console.log('Error', err);
+            }
+            if (data) {
+              console.log('Upload Success', data.Location);
+              ctx.body = { status: 'success' };
+              resolve();
+            }
+          });
+        }
+      });
+    });
   });
 
   router.get('/post/search', async (ctx) => {

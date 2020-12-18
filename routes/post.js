@@ -29,7 +29,7 @@ if (storageConfig === 's3') {
     filename: function (req, file, cb) {
       cb(
         null,
-        file.fieldname + '-' + Date.now() + '.' + file.mimetype.split('/')[1]
+        `${file.fieldname}-${Date.now()}.${file.mimetype.split('/')[1]}`
       );
     },
   });
@@ -163,7 +163,7 @@ module.exports = (Models, router) => {
     '/post/create',
     storageConfig !== 's3'
       ? upload.single('image')
-      : (ctx) => Promise.resolve(ctx),
+      : (ctx, next) => Promise.resolve(ctx).then(next),
     async (ctx) => {
       const sessionToken = ctx.cookies.get('auth');
       const secret = process.env.JWT_SECRET;
@@ -183,6 +183,9 @@ module.exports = (Models, router) => {
         const { files } = await asyncBusboy(ctx.req);
         const fileStream = fs.createReadStream(files[0].path);
         const dimensions = sizeOf(files[0].path);
+        const uniqueFileName = `${files[0].fieldname}-${Date.now()}.${
+          files[0].mimeType.split('/')[1]
+        }`;
 
         fileStream.on('error', function (err) {
           errorRes.message.push('File Error');
@@ -194,7 +197,8 @@ module.exports = (Models, router) => {
           ctx.throw(errorRes.status, errorRes.message.join('\n'));
         }
         uploadParams.Body = fileStream;
-        uploadParams.Key = s3ImageDir + files[0].filename;
+
+        uploadParams.Key = `${s3ImageDir}${uniqueFileName}`;
 
         return new Promise((resolve) => {
           s3.upload(uploadParams, async function (err, data) {
@@ -209,8 +213,8 @@ module.exports = (Models, router) => {
                 height: dimensions.height,
                 width: dimensions.width,
                 source: source,
-                url: imageUrl + files[0].filename,
-                thumbUrl: thumbUrl + files[0].filename,
+                url: imageUrl + uniqueFileName,
+                thumbUrl: thumbUrl + uniqueFileName,
               });
 
               for (let i = 0; i < tags.length; i++) {
@@ -226,10 +230,12 @@ module.exports = (Models, router) => {
                 });
               }
 
-              uploadParams.Key = s3ThumbDir + files[0].filename;
-              uploadParams.Body = await sharp(files[0].path).resize(200, 200, {
-                fit: 'cover',
-              });
+              uploadParams.Key = `${s3ThumbDir}${uniqueFileName}`;
+              uploadParams.Body = await sharp(files[0].path)
+                .jpeg({ quality: 100, progressive: true })
+                .resize(200, 200, {
+                  fit: 'cover',
+                });
 
               s3.upload(uploadParams, function (err, data) {
                 if (err) {

@@ -81,6 +81,7 @@ ssl
 .idea
 nbproject
 public/
+temp/
 
 ############################
 # Node.js
@@ -109,3 +110,4 @@ coverage
 
 *.env
 /config
+aws.json

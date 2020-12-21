@@ -8,7 +8,11 @@ module.exports = async (ctx, next) => {
     try {
       const payload = jwt.verify(sessionToken, secret);
       if (payload) {
-        const newPayload = { id: payload.id, admin: payload.admin };
+        const newPayload = {
+          ...payload,
+        };
+        delete newPayload.iat;
+        delete newPayload.exp;
         const options = { expiresIn: '1h' };
         const sessionToken = jwt.sign(newPayload, secret, options);
 

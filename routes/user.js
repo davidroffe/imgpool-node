@@ -45,7 +45,6 @@ module.exports = (Models, router) => {
             response: recaptchaResponse,
           },
         });
-        console.log(response.data);
       }
       if (env === 'development' || response.data.success) {
         const user = await Models.User.findOrCreate({
@@ -60,7 +59,12 @@ module.exports = (Models, router) => {
         if (!user[1]) {
           ctx.throw(401, 'Sorry, that email is taken.');
         } else {
-          const payload = { id: user[0].id, admin: user[0].admin };
+          const payload = {
+            id: user[0].id,
+            username: user[0].username,
+            email: user[0].email,
+            admin: user[0].admin,
+          };
           const options = { expiresIn: sessionExp };
           const sessionToken = jwt.sign(payload, jwtSecret, options);
 
@@ -70,11 +74,11 @@ module.exports = (Models, router) => {
           ctx.status = 200;
           ctx.body = {
             id: user.id,
-            username: user.username,
-            email: user.email,
-            bio: user.bio,
-            admin: user.admin,
-            favorites: user.favoritedPosts,
+            username: user[0].username,
+            email: user[0].email,
+            bio: user[0].bio,
+            admin: user[0].admin,
+            favorites: user[0].favoritedPosts,
             valid: true,
           };
         }
@@ -94,7 +98,12 @@ module.exports = (Models, router) => {
       if (!user || !user.active) {
         ctx.throw(401, 'Invalid email or password');
       } else if (bcrypt.compareSync(password, user.password)) {
-        const payload = { id: user.id, admin: user.admin };
+        const payload = {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          admin: user.admin,
+        };
         const options = { expiresIn: sessionExp };
         const sessionToken = jwt.sign(payload, jwtSecret, options);
 
@@ -244,6 +253,7 @@ module.exports = (Models, router) => {
         await user.save();
         ctx.status = 200;
         ctx.body = {
+          status: 'success',
           id: user.id,
           username: user.username,
           email: user.email,
@@ -449,7 +459,12 @@ module.exports = (Models, router) => {
               );
               user.save();
 
-              const payload = { id: user.id, admin: user.admin };
+              const payload = {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                admin: user.admin,
+              };
               const options = { expiresIn: sessionExp };
               const sessionToken = jwt.sign(payload, jwtSecret, options);
 
@@ -498,19 +513,33 @@ module.exports = (Models, router) => {
           },
         });
 
-        transporter.sendMail({
-          from: '"Imgpool Support" <support@imgpool.app>', // sender address
-          to: user.email,
-          subject: 'Password Reset', // Subject line
-          html: `<div style="width: 825px;max-width: 100%;">
-          <h1 style="margin:0 auto 35px;color:#333;font-size:55px;font-family: sans-serif;font-weight: 600;">
-          <span style="padding-right:15px;border-right:1px solid #333;">Password Reset</span>
-          </h1>
-          <p style="margin:10px 0;color:#333;font-weight: 600;font-size: 14px;line-height: 20px;">
-          If you requested a password reset for ${user.username}, click the button below. If you didn't make this request, ignore this email.
-          </p>
-          <a href="https://imgpool.app/password-reset/${token}" style="display:block; margin-top:50px;border:2px solid #333;padding:15px 14px 20px;box-sizing:border-box;width:326px;height:50px;background:none;text-align:center;text-transform:uppercase;text-decoration:none;color:#333;font-family:sans-serif;font-size:12px;font-weight:600;display:block;cursor:pointer;outline:none;">Reset Password</a>
-          </div>`,
+        return new Promise((resolve, reject) => {
+          transporter.sendMail(
+            {
+              from: `"${process.env.EMAIL_NAME}" <${process.env.EMAIL}>`, // sender address
+              to: user.email,
+              subject: 'Password Reset', // Subject line
+              html: `<div style="width: 825px;max-width: 100%;">
+            <h1 style="margin:0 auto 35px;color:#333;font-size:55px;font-family: sans-serif;font-weight: 600;">
+            <span style="padding-right:15px;border-right:1px solid #333;">Password Reset</span>
+            </h1>
+            <p style="margin:10px 0;color:#333;font-weight: 600;font-size: 14px;line-height: 20px;">
+            If you requested a password reset for ${user.username}, click the button below. If you didn't make this request, ignore this email.
+            </p>
+            <a href="${process.env.SITE_URL}/password-reset/${token}" style="display:block; margin-top:50px;border:2px solid #333;padding:15px 14px 20px;box-sizing:border-box;width:326px;height:50px;background:none;text-align:center;text-transform:uppercase;text-decoration:none;color:#333;font-family:sans-serif;font-size:12px;font-weight:600;display:block;cursor:pointer;outline:none;">Reset Password</a>
+            </div>`,
+            },
+            (err, info) => {
+              if (err) {
+                ctx.status = 500;
+                ctx.body = { message: 'Server error.' };
+              } else {
+                ctx.status = 200;
+                ctx.body = { message: 'An email has been sent.' };
+              }
+              resolve();
+            }
+          );
         });
       }
     }
@@ -546,19 +575,32 @@ module.exports = (Models, router) => {
           },
         });
 
-        transporter.sendMail({
-          from: '"Imgpool Support" <support@imgpool.app>', // sender address
-          to: user.email,
-          subject: 'Password Reset', // Subject line
-          html: `<div style="width: 825px;max-width: 100%;">
-          <h1 style="margin:0 auto 35px;color:#333;font-size:55px;font-family: sans-serif;font-weight: 600;">
-          <span style="padding-right:15px;border-right:1px solid #333;">Password Reset</span>
-          </h1>
-          <p style="margin:10px 0;color:#333;font-weight: 600;font-size: 14px;line-height: 20px;">
-          If you requested a password reset for ${user.username}, click the button below. If you didn't make this request, ignore this email.
-          </p>
-          <a href="https://imgpool.app/password-reset/${token}" style="display:block; margin-top:50px;border:2px solid #333;padding:15px 14px 20px;box-sizing:border-box;width:326px;height:50px;background:none;text-align:center;text-transform:uppercase;text-decoration:none;color:#333;font-family:sans-serif;font-size:12px;font-weight:600;display:block;cursor:pointer;outline:none;">Reset Password</a>
-          </div>`,
+        return new Promise((resolve, reject) => {
+          transporter.sendMail(
+            {
+              from: `"${process.env.EMAIL_NAME}" <${process.env.EMAIL}>`, // sender address
+              to: user.email,
+              subject: 'Password Reset', // Subject line
+              html: `<div style="width: 825px;max-width: 100%;">
+            <h1 style="margin:0 auto 35px;color:#333;font-size:55px;font-family: sans-serif;font-weight: 600;">
+            <span style="padding-right:15px;border-right:1px solid #333;">Password Reset</span>
+            </h1>
+            <p style="margin:10px 0;color:#333;font-weight: 600;font-size: 14px;line-height: 20px;">
+            If you requested a password reset for ${user.username}, click the button below. If you didn't make this request, ignore this email.
+            </p>
+            <a href="${process.env.SITE_URL}/password-reset/${token}" style="display:block; margin-top:50px;border:2px solid #333;padding:15px 14px 20px;box-sizing:border-box;width:326px;height:50px;background:none;text-align:center;text-transform:uppercase;text-decoration:none;color:#333;font-family:sans-serif;font-size:12px;font-weight:600;display:block;cursor:pointer;outline:none;">Reset Password</a>
+            </div>`,
+            },
+            (err) => {
+              if (err) {
+                reject(false);
+              } else {
+                resolve(true);
+              }
+            }
+          );
+        }).catch(() => {
+          ctx.throw(500, 'Server error.');
         });
       } else {
         ctx.throw(401, 'User not found.');

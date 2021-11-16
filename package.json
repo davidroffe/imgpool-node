@@ -14,7 +14,7 @@
     "@koa/multer": "^2.0.0",
     "@koa/router": "^8.0.0",
     "async-busboy": "^1.0.1",
-    "aws-sdk": "^2.809.0",
+    "aws-sdk": "^2.814.0",
     "bcrypt": "^5.0.0",
     "bcrypt-nodejs": "^0.0.3",
     "dotenv": "^8.1.0",

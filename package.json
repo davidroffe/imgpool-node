@@ -33,7 +33,7 @@
     "pm2": "^4.1.2",
     "redux": "^4.0.4",
     "sequelize": "^5.12.3",
-    "sharp": "^0.23.0"
+    "sharp": "^0.30.5"
   },
   "devDependencies": {
     "sequelize-cli": "^5.5.0"
